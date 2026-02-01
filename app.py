@@ -193,11 +193,22 @@ with st.sidebar:
     st.markdown("---")
     predict_button = st.button("🔮 Predict Risk", type="primary", use_container_width=True)
 
+# Calculate realistic estimates for actual_days and delay_days based on distance and conditions
+# Average speed assumption: 500 km/day for logistics
+# Add processing time, weather and traffic delays
+base_delivery_days = (distance / 500.0) + processing_time
+weather_delay = 1.0 if weather_rain else 0.0
+traffic_delay = 0.5 if peak_traffic else 0.0
+estimated_actual_days = base_delivery_days + weather_delay + traffic_delay
+
+# Calculate delay: difference between estimated actual and scheduled
+estimated_delay = max(0, estimated_actual_days - scheduled_days)
+
 input_df = pd.DataFrame({
     'processing_time_days': [processing_time],
     'scheduled_days': [scheduled_days],
-    'actual_days': [0],  # Not input, derived
-    'delay_days': [0],
+    'actual_days': [estimated_actual_days],
+    'delay_days': [estimated_delay],
     'distance_km': [distance],
     'order_volume': [volume],
     'risk_score': [risk_score],
@@ -211,6 +222,18 @@ probs = model.predict_proba(input_scaled)[0]
 
 # Main Results Section
 st.markdown("## 🎯 Prediction Results")
+
+# Show estimated delivery info
+st.markdown(f"""
+<div style='background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 15px; border-radius: 10px; border-left: 5px solid #f59e0b; margin-bottom: 20px; border: 2px solid #fbbf24;'>
+    <span style='color: #92400e; font-weight: 600;'>📊 Delivery Analysis:</span>
+    <span style='color: #78350f;'>
+        Estimated Actual Delivery: <strong>{estimated_actual_days:.1f} days</strong> | 
+        Scheduled: <strong>{scheduled_days:.1f} days</strong> | 
+        Potential Delay: <strong>{estimated_delay:.1f} days</strong>
+    </span>
+</div>
+""", unsafe_allow_html=True)
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -331,6 +354,8 @@ with col_feat2:
         'Parameter': [
             'Processing Time',
             'Scheduled Days',
+            '⚙️ Estimated Actual Days',
+            '⏰ Estimated Delay',
             'Distance',
             'Order Volume',
             'Risk Score',
@@ -340,6 +365,8 @@ with col_feat2:
         'Value': [
             f"{processing_time} days",
             f"{scheduled_days} days",
+            f"{estimated_actual_days:.1f} days",
+            f"{estimated_delay:.1f} days",
             f"{distance:.0f} km",
             f"{volume} items",
             f"{risk_score:.2f}",
